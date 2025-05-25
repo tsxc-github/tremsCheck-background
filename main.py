@@ -1,9 +1,10 @@
 ﻿import json
+from operator import truediv
 
 import requests
 import uvicorn
 from openai import OpenAI
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 from typing import List, Union
 from lxml import html
 import trafilatura
@@ -14,7 +15,7 @@ from fastapi.responses import JSONResponse
 app=FastAPI()
 
 @app.get("/api/get_website_content")
-def GetContent(URL:str):
+def GetContent(URL:str=Body(embed=True)):
     """
     寻找页面主要内容
     - URL:要获取的网页的URL
@@ -61,8 +62,42 @@ def RequestDeepseek(system_prompt,user_prompt,temperature=0):
 def root():
     return {"message": "Hello World"}
 
+@app.post("/api/check_account/")
+def check_account(session_id:int=Body(embed=True)):
+    data=json.loads(open("login.json","r",encoding="utf-8").read())
+    if session_id in data["session_id"]:
+        return True
+    else:
+        return False
+
+
+@app.post("/api/login/")
+def login(username:str=Body(embed=True),password:str=Body(embed=True),session_id:int=Body(embed=True)):
+    data=json.loads(open("user.json","r",encoding="utf-8").read())
+    try:
+        if(data[username]==password):
+            a=json.loads(open("login.json","r",encoding="utf-8").read())
+            if not session_id in a["session_id"] :
+                a["session_id"].append(session_id)
+            open("login.json", "w", encoding="utf-8").write(json.dumps(a))
+            return True
+        else:
+            return False
+    except:
+        return False
+
+@app.post("/api/signup/")
+def signup(username:str=Body(embed=True),password:str=Body(embed=True),session_id:int=Body(embed=True)):
+    data=json.loads(open("user.json","r",encoding="utf-8").read())
+    if(username in data):
+        return False
+    else:
+        data[username]=password
+        open("user.json", "w", encoding="utf-8").write(json.dumps(data))
+        return True
+
 @app.post("/api/questions/")
-def questions(message_request:str,message_content:str,session_id:int):
+def questions(message_request:str=Body(embed=True),message_content:str=Body(embed=True),session_id:int=Body(embed=True)):
     """
     根据条文问ai问题
     - message_request: 问题
@@ -76,7 +111,7 @@ def questions(message_request:str,message_content:str,session_id:int):
     return JSONResponse(content=content)
 
 @app.post("/api/get_question")
-def GetQuestion(message_content:str,number:int,session_id:int):
+def GetQuestion(message_content:str=Body(embed=True),number:int=Body(embed=True),session_id:int=Body(embed=True)):
     """
     根据条文生成一个让用户概括的问题
     - message_content：条文
@@ -90,7 +125,7 @@ def GetQuestion(message_content:str,number:int,session_id:int):
     return JSONResponse(content=content)
 
 @app.post("/api/judge_answer")
-def JudgeAnswer(question:str,answer:str,session_id:int):
+def JudgeAnswer(question:str=Body(embed=True),answer:str=Body(embed=True),session_id:int=Body(embed=True)):
     """
     判断question条文和用户的answer是否匹配
     - question: 条文内容
@@ -111,7 +146,7 @@ def JudgeAnswer(question:str,answer:str,session_id:int):
     return JSONResponse(content=content)
 
 @app.post("/api/get_mcq")
-def mcq(question:str,session_id:int):
+def mcq(question:str=Body(embed=True),session_id:int=Body(embed=True)):
     """
     给出一道选择题
     - question: 条文内容
